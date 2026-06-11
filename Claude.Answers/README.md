@@ -116,6 +116,31 @@ Alexa's HTTPS requirement out of the box.
 > request-signature verification plus the 150-second timestamp check inside the
 > function. This is the standard pattern for Alexa skills on Azure Functions.
 
+### Continuous deployment (GitHub Actions)
+
+`.github/workflows/deploy.yml` deploys to the Function App on every push to `master`
+(and on manual **Run workflow**). It builds with `dotnet publish` and ships the output
+with `Azure/functions-action`. The deploy job **stays skipped until you configure two
+things**, so it never fails before it's set up:
+
+1. **Repository variable** `AZURE_FUNCTIONAPP_NAME` = your Function App name
+   (Settings → Secrets and variables → Actions → **Variables**).
+2. **Repository secret** `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` = the app's publish profile
+   (Settings → Secrets and variables → Actions → **Secrets**). Get the XML with:
+
+   ```bash
+   az functionapp deployment list-publishing-profiles \
+     --name <APP> --resource-group <RG> --xml
+   ```
+
+   (or Portal → Function App → **Get publish profile**), then paste the whole XML as the
+   secret value.
+
+App settings such as `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` are **not** part of the
+deployment — set them once on the Function App (step 2 above) and they persist across
+deploys. Rotate the publish profile if it leaks; the secret is the only credential the
+workflow uses.
+
 ---
 
 ## 3. Create the skill in the Alexa developer console
