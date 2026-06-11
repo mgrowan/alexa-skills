@@ -7,7 +7,7 @@ spoken back.
 - **Invocation name:** `claude`
 - **Single intent:** `AskClaudeIntent` — captures a free-form question and answers it.
 - **Backend:** C# .NET 8 Azure Function (HTTP trigger, isolated worker) with Alexa
-  request-signature verification via the `Alexa.NET.Security.Functions` package.
+  request-signature verification via the `Alexa.NET.Security` package.
 - **Model:** `claude-sonnet-4-20250514`, `max_tokens` = 300, system prompt tuned for
   concise spoken answers (2–3 sentences, no markdown).
 
@@ -172,7 +172,7 @@ distribute the skill publicly to other users.)
 
 Every inbound request is validated before any work is done:
 
-1. **Signature verification** — `Alexa.NET.Security.Functions.RequestVerification.Verify`
+1. **Signature verification** — `Alexa.NET.Security.RequestVerification.Verify`
    downloads and validates the Amazon signing certificate referenced by the
    `SignatureCertChainUrl` header and checks the `Signature` header against the raw
    request body.

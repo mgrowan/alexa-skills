@@ -2,7 +2,7 @@ using System.Net;
 using Alexa.NET.Request;
 using Alexa.NET.Request.Type;
 using Alexa.NET.Response;
-using Alexa.NET.Security.Functions;
+using Alexa.NET.Security;
 using Anthropic;
 using Anthropic.Models.Messages;
 using Microsoft.Azure.Functions.Worker;
