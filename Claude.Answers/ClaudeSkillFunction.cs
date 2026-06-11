@@ -1,8 +1,8 @@
 using System.Net;
+using Alexa.NET;
 using Alexa.NET.Request;
 using Alexa.NET.Request.Type;
 using Alexa.NET.Response;
-using Alexa.NET.Security;
 using Anthropic;
 using Anthropic.Models.Messages;
 using Microsoft.Azure.Functions.Worker;
@@ -190,7 +190,8 @@ public class ClaudeSkillFunction
 
         try
         {
-            return await RequestVerification.Verify(signature, certUri, body);
+            // Fully qualified: Alexa.NET.Request also defines a RequestVerification type.
+            return await Alexa.NET.Security.RequestVerification.Verify(signature, certUri, body);
         }
         catch
         {
