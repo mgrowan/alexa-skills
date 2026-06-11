@@ -1,0 +1,15 @@
+# Build output
+bin/
+obj/
+
+# Azure Functions local settings (contains secrets)
+local.settings.json
+
+# Azure Functions local artifacts
+.azurefunctions/
+azure-functions-core-tools/
+
+# IDE
+.vs/
+.vscode/
+*.user
