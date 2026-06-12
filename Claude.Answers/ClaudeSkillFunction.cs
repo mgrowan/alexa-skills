@@ -19,12 +19,13 @@ namespace Claude.Answers;
 /// </summary>
 public class ClaudeSkillFunction
 {
-    // The voice persona: short, spoken-friendly answers with no markdown.
+    // The voice persona: short, sharp, direct answers with no markdown.
     private const string SystemPrompt =
         "You are Claude, answering through the Alexa voice assistant. " +
-        "Keep every answer to 2-3 short sentences suitable for being read aloud. " +
-        "Use plain conversational text only: no markdown, no bullet points, no headings, " +
-        "no code blocks, no emoji, and no special symbols. If you don't know, say so briefly.";
+        "Give the direct answer only, in one or two short spoken sentences. " +
+        "No preamble, no restating the question, no summary, no sign-off, and no filler words. " +
+        "Plain spoken text only: no markdown, lists, headings, code, emoji, or special symbols. " +
+        "If you don't know, say so in a few words.";
 
     private const int MaxTokens = 300;
 
@@ -89,6 +90,8 @@ public class ClaudeSkillFunction
 
     private async Task<SkillResponse> HandleRequest(SkillRequest skillRequest)
     {
+        _logger.LogInformation("Alexa request: {RequestType}", skillRequest.Request.Type);
+
         switch (skillRequest.Request)
         {
             case LaunchRequest:
@@ -109,18 +112,23 @@ public class ClaudeSkillFunction
 
     private async Task<SkillResponse> HandleIntent(IntentRequest intentRequest)
     {
+        _logger.LogInformation("Intent: {Intent}", intentRequest.Intent.Name);
+
         switch (intentRequest.Intent.Name)
         {
             case "AskClaudeIntent":
                 var question = intentRequest.Intent.Slots?.GetValueOrDefault("question")?.Value;
                 if (string.IsNullOrWhiteSpace(question))
                 {
+                    _logger.LogInformation("AskClaudeIntent received with no question slot value.");
                     return ResponseBuilder.Ask(
                         Speech("I didn't catch a question. What would you like to ask?"),
                         new Reprompt("What's your question?"));
                 }
 
+                _logger.LogInformation("Question: {Question}", question);
                 var answer = await AskClaude(question);
+                _logger.LogInformation("Answer: {Answer}", answer);
                 return ResponseBuilder.Tell(Speech(answer));
 
             case "AMAZON.HelpIntent":
