@@ -6,7 +6,7 @@ spoken back.
 
 - **Invocation name:** `claude`
 - **Single intent:** `AskClaudeIntent` — captures a free-form question and answers it.
-- **Backend:** C# .NET 8 Azure Function (HTTP trigger, isolated worker) with Alexa
+- **Backend:** C# .NET 10 Azure Function (HTTP trigger, isolated worker) with Alexa
   request-signature verification via the `Alexa.NET.Security` package.
 - **Model:** `claude-sonnet-4-6`, `max_tokens` = 300, system prompt tuned for
   concise spoken answers (2–3 sentences, no markdown).
@@ -26,7 +26,7 @@ Alexa speaks  ◀──JSON response──────────────�
 | File | Purpose |
 | --- | --- |
 | `ClaudeSkillFunction.cs` | The HTTP-triggered function: signature verification, routing, Anthropic call. |
-| `Program.cs` | .NET 8 isolated-worker host bootstrap. |
+| `Program.cs` | .NET 10 isolated-worker host bootstrap. |
 | `Claude.Answers.csproj` | Project + NuGet references. |
 | `interaction-model.json` | The Alexa interaction model (invocation name, intent, slots, samples). |
 | `host.json` / `local.settings.json` | Azure Functions configuration (local settings holds secrets, git-ignored). |
@@ -35,7 +35,7 @@ Alexa speaks  ◀──JSON response──────────────�
 
 ## Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
 - An **Azure account** (the Function must be reachable over public HTTPS).
 - An **Amazon developer account** — <https://developer.amazon.com> (free; a developer
@@ -74,32 +74,29 @@ developer console simulator (below).
 
 ## 2. Deploy to Azure
 
-Create the Function App (one-time), then publish. Example using the Azure CLI:
+The Function App is a **Flex Consumption** app. Deployment is automated (see
+Continuous deployment below), but you can also publish manually:
 
 ```bash
-# Login and create resources (adjust names/region as needed)
-az login
-az group create --name claude-skill-rg --location eastus
-az storage account create --name claudeskillstore$RANDOM --location eastus \
-  --resource-group claude-skill-rg --sku Standard_LRS
-az functionapp create --resource-group claude-skill-rg \
-  --consumption-plan-location eastus --runtime dotnet-isolated \
-  --functions-version 4 --name claude-answers-fn \
-  --storage-account <the-storage-account-name>
+cd Claude.Answers
+func azure functionapp publish alexa-skills-claude-answers
+```
 
-# Configure secrets / settings
-az functionapp config appsettings set --name claude-answers-fn \
-  --resource-group claude-skill-rg \
+The Function App's runtime stack must be **.NET 10 isolated** to match the project's
+target framework — if they disagree, the Functions host will not start.
+
+App settings (set once on the Function App; they persist across deploys):
+
+```bash
+az functionapp config appsettings set --name alexa-skills-claude-answers \
+  --resource-group matthew-development \
   --settings ANTHROPIC_API_KEY="sk-ant-..." CLAUDE_MODEL="claude-sonnet-4-6"
-
-# Publish the code
-func azure functionapp publish claude-answers-fn
 ```
 
-After publishing, your endpoint is:
+Your endpoint is:
 
 ```
-https://claude-answers-fn.azurewebsites.net/api/Claude
+https://alexa-skills-claude-answers.azurewebsites.net/api/Claude
 ```
 
 Azure provides a valid TLS certificate on `*.azurewebsites.net`, which satisfies
@@ -112,28 +109,14 @@ Alexa's HTTPS requirement out of the box.
 
 ### Continuous deployment (GitHub Actions)
 
-`.github/workflows/deploy.yml` deploys to the Function App on every push to `master`
-(and on manual **Run workflow**). It builds with `dotnet publish` and ships the output
-with `Azure/functions-action`. The deploy job **stays skipped until you configure two
-things**, so it never fails before it's set up:
-
-1. **Repository variable** `AZURE_FUNCTIONAPP_NAME` = your Function App name
-   (Settings → Secrets and variables → Actions → **Variables**).
-2. **Repository secret** `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` = the app's publish profile
-   (Settings → Secrets and variables → Actions → **Secrets**). Get the XML with:
-
-   ```bash
-   az functionapp deployment list-publishing-profiles \
-     --name <APP> --resource-group <RG> --xml
-   ```
-
-   (or Portal → Function App → **Get publish profile**), then paste the whole XML as the
-   secret value.
+Deployment is handled by the workflow the Azure Portal generated when GitHub
+deployment was configured:
+`.github/workflows/master_alexa-skills-claude-answers.yml`. It runs `dotnet publish`
+and deploys to the Function App on every push to `master`, authenticating with OIDC
+(federated credentials) — there is no publish profile to manage.
 
 App settings such as `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` are **not** part of the
-deployment — set them once on the Function App (step 2 above) and they persist across
-deploys. Rotate the publish profile if it leaks; the secret is the only credential the
-workflow uses.
+deployment — set them once on the Function App and they persist across deploys.
 
 ---
 
@@ -155,7 +138,7 @@ workflow uses.
 5. **Endpoint:** open **Build ▸ Endpoint**.
    - Select **HTTPS**.
    - **Default Region:** paste your Azure Function URL:
-     `https://claude-answers-fn.azurewebsites.net/api/Claude`
+     `https://alexa-skills-claude-answers.azurewebsites.net/api/Claude`
    - For the SSL certificate type, choose **“My development endpoint is a sub-domain
      of a domain that has a wildcard certificate from a certificate authority.”**
      (`*.azurewebsites.net` is exactly that.)
