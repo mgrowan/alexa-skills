@@ -42,7 +42,7 @@ public class ClaudeSkillFunction
         {
             ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")
         };
-        _model = Environment.GetEnvironmentVariable("CLAUDE_MODEL") ?? "claude-sonnet-4-20250514";
+        _model = Environment.GetEnvironmentVariable("CLAUDE_MODEL") ?? "claude-sonnet-4-6";
     }
 
     [Function("Claude")]

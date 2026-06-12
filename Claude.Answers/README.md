@@ -8,7 +8,7 @@ spoken back.
 - **Single intent:** `AskClaudeIntent` — captures a free-form question and answers it.
 - **Backend:** C# .NET 8 Azure Function (HTTP trigger, isolated worker) with Alexa
   request-signature verification via the `Alexa.NET.Security` package.
-- **Model:** `claude-sonnet-4-20250514`, `max_tokens` = 300, system prompt tuned for
+- **Model:** `claude-sonnet-4-6`, `max_tokens` = 300, system prompt tuned for
   concise spoken answers (2–3 sentences, no markdown).
 
 ```
@@ -18,12 +18,6 @@ Alexa device  ──speech──▶  Alexa service  ──HTTPS POST──▶  A
                                                               ▼
 Alexa speaks  ◀──JSON response──────────────────────────  plain-text answer
 ```
-
-> **Heads up — model retirement.** `claude-sonnet-4-20250514` is deprecated and is
-> scheduled to retire on **2026-06-15**. After that date the API returns 404 for this
-> model ID. The model is read from the `CLAUDE_MODEL` app setting, so you can swap it
-> (e.g. to `claude-sonnet-4-6`) without touching code. See
-> <https://platform.claude.com/docs/en/about-claude/models/overview> for current IDs.
 
 ---
 
@@ -96,7 +90,7 @@ az functionapp create --resource-group claude-skill-rg \
 # Configure secrets / settings
 az functionapp config appsettings set --name claude-answers-fn \
   --resource-group claude-skill-rg \
-  --settings ANTHROPIC_API_KEY="sk-ant-..." CLAUDE_MODEL="claude-sonnet-4-20250514"
+  --settings ANTHROPIC_API_KEY="sk-ant-..." CLAUDE_MODEL="claude-sonnet-4-6"
 
 # Publish the code
 func azure functionapp publish claude-answers-fn
