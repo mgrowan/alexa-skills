@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "claude answers",
+      "invocationName": "claude answer",
       "intents": [
         {
           "name": "AskClaudeIntent",
