@@ -27,6 +27,7 @@ public class ClaudeSkillFunction
         "infer the user's intended question and answer that. " +
         "When the answer depends on current events, recent facts, prices, schedules, or anything " +
         "time-sensitive, use web search before answering instead of relying on memory. " +
+        "Answer fast: do at most one quick search, then answer. " +
         "Give the direct answer only, in one or two short spoken sentences. " +
         "No preamble, no restating the question, no summary, no sign-off, and no filler words. " +
         "Plain spoken text only: no markdown, lists, headings, code, emoji, citations, or special symbols. " +
@@ -36,6 +37,10 @@ public class ClaudeSkillFunction
 
     // Alexa requires the request timestamp to be within 150 seconds of now.
     private static readonly TimeSpan TimestampTolerance = TimeSpan.FromSeconds(150);
+
+    // Alexa discards the response if the skill takes longer than ~8s. Bail out of
+    // a slow Claude call before that so the user gets a graceful retry prompt.
+    private static readonly TimeSpan ResponseBudget = TimeSpan.FromSeconds(7);
 
     private readonly ILogger _logger;
     private readonly AnthropicClient _anthropic;
@@ -159,13 +164,23 @@ public class ClaudeSkillFunction
                 Model = _model,
                 MaxTokens = MaxTokens,
                 System = SystemPrompt,
-                // Server-side web search so Claude can answer current/factual questions.
-                // MaxUses bounds latency to stay within Alexa's ~8s response window.
-                Tools = [new WebSearchTool20260209 { MaxUses = 3 }],
+                // One server-side web search keeps current-events answers within Alexa's
+                // ~8s response window; more searches reliably blow past it.
+                Tools = [new WebSearchTool20260209 { MaxUses = 1 }],
                 Messages = [new() { Role = Role.User, Content = question }]
             };
 
-            var response = await _anthropic.Messages.Create(parameters);
+            var createTask = _anthropic.Messages.Create(parameters);
+
+            // Don't let a slow lookup run past Alexa's timeout; return a retry prompt instead.
+            if (await Task.WhenAny(createTask, Task.Delay(ResponseBudget)) != createTask)
+            {
+                _logger.LogWarning("Claude call exceeded the {Seconds}s budget; returning retry prompt.",
+                    ResponseBudget.TotalSeconds);
+                return "Sorry, that took too long to look up. Please ask again.";
+            }
+
+            var response = await createTask;
 
             // Concatenate the final text blocks (web search / tool-use blocks are ignored).
             var text = string.Concat(
