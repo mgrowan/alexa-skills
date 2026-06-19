@@ -15,7 +15,7 @@ namespace Claude.Answers;
 /// <summary>
 /// HTTP-triggered Azure Function that backs the "Claude" Alexa custom skill.
 /// It verifies the Alexa request signature, sends the user's question to
-/// Anthropic's API (with web search enabled), and speaks back the answer.
+/// Anthropic's API (web search used only as a fallback), and speaks the answer.
 /// </summary>
 public class ClaudeSkillFunction
 {
@@ -25,9 +25,9 @@ public class ClaudeSkillFunction
         "The question may arrive with its first word or two dropped by speech recognition " +
         "(for example \"much did the company raise\" or \"many episodes are there\"); " +
         "infer the user's intended question and answer that. " +
-        "When the answer depends on current events, recent facts, prices, schedules, or anything " +
-        "time-sensitive, use web search before answering instead of relying on memory. " +
-        "Answer fast: do at most one quick search, then answer. " +
+        "Answer directly from your own knowledge whenever you can — most questions need no search. " +
+        "Only use web search if you genuinely don't know the answer or it depends on current or recent " +
+        "information you're not confident about, and then do at most one quick search. " +
         "Give the direct answer only, in one or two short spoken sentences. " +
         "No preamble, no restating the question, no summary, no sign-off, and no filler words. " +
         "Plain spoken text only: no markdown, lists, headings, code, emoji, citations, or special symbols. " +
@@ -164,8 +164,8 @@ public class ClaudeSkillFunction
                 Model = _model,
                 MaxTokens = MaxTokens,
                 System = SystemPrompt,
-                // One server-side web search keeps current-events answers within Alexa's
-                // ~8s response window; more searches reliably blow past it.
+                // One server-side web search, used only when Claude can't answer from its own
+                // knowledge. A single search keeps the occasional lookup within Alexa's ~8s window.
                 Tools = [new WebSearchTool20260209 { MaxUses = 1 }],
                 Messages = [new() { Role = Role.User, Content = question }]
             };
