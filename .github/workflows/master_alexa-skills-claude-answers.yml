@@ -33,7 +33,9 @@ jobs:
         shell: bash
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet publish --configuration Release --output ./output
+          # ReadyToRun (AOT pre-compile for the Flex Consumption Linux x64 host)
+          # reduces JIT at startup to cut cold-start time. Framework-dependent.
+          dotnet publish --configuration Release -r linux-x64 --no-self-contained -p:PublishReadyToRun=true --output ./output
           popd
 
       - name: Login to Azure
