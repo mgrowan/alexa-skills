@@ -15,7 +15,7 @@ namespace Claude.Answers;
 /// <summary>
 /// HTTP-triggered Azure Function that backs the "Claude" Alexa custom skill.
 /// It verifies the Alexa request signature, sends the user's question to
-/// Anthropic's API (web search used only as a fallback), and speaks the answer.
+/// Anthropic's API, and speaks back the plain-text answer.
 /// </summary>
 public class ClaudeSkillFunction
 {
@@ -25,13 +25,10 @@ public class ClaudeSkillFunction
         "The question may arrive with its first word or two dropped by speech recognition " +
         "(for example \"much did the company raise\" or \"many episodes are there\"); " +
         "infer the user's intended question and answer that. " +
-        "Answer directly from your own knowledge whenever you can — most questions need no search. " +
-        "Only use web search if you genuinely don't know the answer or it depends on current or recent " +
-        "information you're not confident about, and then do at most one quick search. " +
         "Give the direct answer only, in one or two short spoken sentences. " +
         "No preamble, no restating the question, no summary, no sign-off, and no filler words. " +
-        "Plain spoken text only: no markdown, lists, headings, code, emoji, citations, or special symbols. " +
-        "If you still don't know, say so in a few words.";
+        "Plain spoken text only: no markdown, lists, headings, code, emoji, or special symbols. " +
+        "If you don't know, say so in a few words.";
 
     private const int MaxTokens = 300;
 
@@ -164,25 +161,21 @@ public class ClaudeSkillFunction
                 Model = _model,
                 MaxTokens = MaxTokens,
                 System = SystemPrompt,
-                // One server-side web search, used only when Claude can't answer from its own
-                // knowledge. A single search keeps the occasional lookup within Alexa's ~8s window.
-                Tools = [new WebSearchTool20260209 { MaxUses = 1 }],
                 Messages = [new() { Role = Role.User, Content = question }]
             };
 
             var createTask = _anthropic.Messages.Create(parameters);
 
-            // Don't let a slow lookup run past Alexa's timeout; return a retry prompt instead.
+            // Don't let a slow call run past Alexa's timeout; return a retry prompt instead.
             if (await Task.WhenAny(createTask, Task.Delay(ResponseBudget)) != createTask)
             {
                 _logger.LogWarning("Claude call exceeded the {Seconds}s budget; returning retry prompt.",
                     ResponseBudget.TotalSeconds);
-                return "Sorry, that took too long to look up. Please ask again.";
+                return "Sorry, that took too long. Please ask again.";
             }
 
             var response = await createTask;
 
-            // Concatenate the final text blocks (web search / tool-use blocks are ignored).
             var text = string.Concat(
                 response.Content
                     .Select(block => block.Value)
